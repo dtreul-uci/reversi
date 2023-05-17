@@ -1,23 +1,24 @@
 {
   "name": "reversi",
-  "version": "0.0.1",
-  "description": "Reversi web app",
-  "main": "server.js",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -p $PORT",
+    "lint": "next lint"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/dtreul-uci/reversi.git"
-  },
-  "author": "Derrick Treul",
-  "license": "GPL-3.0",
-  "bugs": {
-    "url": "https://github.com/dtreul-uci/reversi/issues"
-  },
-  "homepage": "https://github.com/dtreul-uci/reversi#readme",
   "dependencies": {
-    "node-static": "^0.7.11",
-    "socket.io": "^4.6.1"
+    "@types/node": "20.1.7",
+    "@types/react": "18.2.6",
+    "@types/react-dom": "18.2.4",
+    "bootstrap": "^5.2.3",
+    "eslint": "8.40.0",
+    "eslint-config-next": "13.4.2",
+    "next": "13.4.2",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "socket.io": "^4.6.1",
+    "typescript": "5.0.4"
   }
 }
