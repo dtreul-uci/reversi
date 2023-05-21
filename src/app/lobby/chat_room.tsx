@@ -4,6 +4,7 @@ import { io, Socket } from "socket.io-client";
 import { useEffect, useState } from "react";
 import { JoinRoomRequest, JoinRoomResponse } from "@/src/types/join_room";
 import { SendChatMessageRequest } from "@/src/types/send_chat_message";
+import styles from "./page.module.css";
 
 let socket: Socket;
 
@@ -81,8 +82,7 @@ export default function ChatRoom() {
 
   return (
     <>
-      <h4>Messages</h4>
-      <div className="col-8 m-3">
+      <div className="m-3 justify-content-center">
         <form onSubmit={sendChatMessage} className="input-group">
           <input
             type="text"
@@ -105,9 +105,12 @@ export default function ChatRoom() {
           </button>
         </form>
       </div>
+      <h4>Messages</h4>
       {loading && <>Loading messages...</>}
       {messages.map((message) => (
-        <p key={message.id}>{message.message}</p>
+        <p className={styles.chatMessage} key={message.id}>
+          {message.message}
+        </p>
       ))}
     </>
   );
