@@ -6,11 +6,13 @@ import { useEffect, useState } from "react";
 let socket: Socket;
 
 export default function Message() {
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState<null | string>("");
 
   useEffect(() => {
     const queryParameters = new URLSearchParams(window.location.search);
     setName(queryParameters.get("name"));
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export default function Message() {
       >
         Test
       </button> */}
-      Hello {name}
+      {loading ? <>Loading...</> : <>Hello {name}</>}
     </>
   );
 }
