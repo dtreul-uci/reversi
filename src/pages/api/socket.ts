@@ -1,6 +1,22 @@
 import { Server } from "socket.io";
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { Server as IOServer } from "socket.io";
+import type { Server as HTTPServer } from "http";
+import type { Socket as NetSocket } from "net";
 
-const SocketHandler = (req, res) => {
+interface SocketServer extends HTTPServer {
+  io?: IOServer | undefined;
+}
+
+interface SocketWithIO extends NetSocket {
+  server: SocketServer;
+}
+
+interface NextApiResponseWithSocket extends NextApiResponse {
+  socket: SocketWithIO;
+}
+
+const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
   if (res.socket.server.io) {
     console.log("Socket is already running");
   } else {
