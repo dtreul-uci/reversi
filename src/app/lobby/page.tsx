@@ -1,4 +1,4 @@
-import Message from "./message";
+import ChatRoom from "./chat_room";
 
 export const metadata = {
   title: "Reversi: Lobby",
@@ -16,8 +16,7 @@ export default function Page() {
         </div>
         <div className="row m-3">
           <div className="col">
-            <h4>Messages</h4>
-            <Message />
+            <ChatRoom />
           </div>
         </div>
       </div>

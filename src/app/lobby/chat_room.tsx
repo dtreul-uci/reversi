@@ -13,7 +13,7 @@ interface RoomMessage {
 
 let nextId = 0;
 
-export default function Message() {
+export default function ChatRoom() {
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<RoomMessage[]>([]);
 
@@ -49,6 +49,7 @@ export default function Message() {
 
   return (
     <>
+      <h4>Messages</h4>
       {messages.map((message) => (
         <p key={message.id}>{message.message}</p>
       ))}
