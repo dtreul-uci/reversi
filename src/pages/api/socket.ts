@@ -5,6 +5,10 @@ import type { Server as HTTPServer } from "http";
 import type { Socket as NetSocket } from "net";
 
 import { JoinRoomRequest, JoinRoomResponse } from "@/src/types/join_room";
+import {
+  SendChatMessageRequest,
+  SendChatMessageResponse,
+} from "@/src/types/send_chat_message";
 
 interface SocketServer extends HTTPServer {
   io?: IOServer | undefined;
@@ -63,6 +67,44 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
             io.of("/").to(request.room).emit("join_room_response", response);
             console.log(response);
           });
+      });
+
+      socket.on("send_chat_message", (request: SendChatMessageRequest) => {
+        console.log("sending chat message!!!!");
+        console.log(request);
+        if (typeof request.room == undefined || request.room == null) {
+          const response: SendChatMessageResponse = {
+            result: "fail",
+            message: "Room not specified",
+          };
+          socket.emit("send_chat_message_response", response);
+        }
+        if (typeof request.username == undefined || request.username == null) {
+          const response: SendChatMessageResponse = {
+            result: "fail",
+            message: "Username not specified",
+          };
+          socket.emit("send_chat_message_response", response);
+        }
+        if (typeof request.message == undefined || request.message == null) {
+          const response: SendChatMessageResponse = {
+            result: "fail",
+            message: "message not specified",
+          };
+          socket.emit("send_chat_message_response", response);
+        }
+
+        // success
+        const response: SendChatMessageResponse = {
+          result: "success",
+          room: request.room,
+          username: request.username,
+          message: request.message!,
+        };
+        io.of("/")
+          .to(request.room!)
+          .emit("send_chat_message_response", response);
+        console.log(response);
       });
     });
   }
