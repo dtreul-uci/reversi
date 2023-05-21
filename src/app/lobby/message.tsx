@@ -41,7 +41,7 @@ export default function Message() {
       >
         Test
       </button> */}
-      {loading ? <>Loading...</> : <>Hello {name}</>}
+      {loading ? <>Loading...</> : <>{name}:</>}
     </>
   );
 }

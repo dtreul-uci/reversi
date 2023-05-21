@@ -15,8 +15,8 @@ export default function Page() {
           </div>
         </div>
         <div className="row m-3">
-          <div className="col text-center">
-            {/* <h4>Messages</h4> */}
+          <div className="col">
+            <h4>Messages</h4>
             <Message />
           </div>
         </div>
