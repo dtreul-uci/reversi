@@ -1,5 +1,5 @@
 export interface JoinRoomRequest {
-  room: string | null;
+  room: string;
   username: string | null;
 }
 
