@@ -26,7 +26,6 @@ export default function ChatRoom() {
       socket.on("connect", () => {
         const queryParameters = new URLSearchParams(window.location.search);
         const name = queryParameters.get("name");
-        setLoading(false);
         const joinRoomRequest: JoinRoomRequest = {
           room: "Lobby",
           username: name,
@@ -42,6 +41,7 @@ export default function ChatRoom() {
           message: `${response.username} joined the room. (There are ${response.count} users in the room.)`,
           id: nextId++,
         };
+        setLoading(false);
         setMessages((previous) => [roomMessage, ...previous]);
       });
     });
@@ -50,6 +50,7 @@ export default function ChatRoom() {
   return (
     <>
       <h4>Messages</h4>
+      {loading && <>Loading...</>}
       {messages.map((message) => (
         <p key={message.id}>{message.message}</p>
       ))}
