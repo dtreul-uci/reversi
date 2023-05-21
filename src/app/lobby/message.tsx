@@ -2,18 +2,20 @@
 
 import { io, Socket } from "socket.io-client";
 import { useEffect, useState } from "react";
+import { JoinRoomRequest, JoinRoomResponse } from "@/src/types/join_room";
 
 let socket: Socket;
 
+interface RoomMessage {
+  message: string;
+  id: number;
+}
+
+let nextId = 0;
+
 export default function Message() {
   const [loading, setLoading] = useState(true);
-  const [name, setName] = useState<null | string>("");
-
-  useEffect(() => {
-    const queryParameters = new URLSearchParams(window.location.search);
-    setName(queryParameters.get("name"));
-    setLoading(false);
-  }, []);
+  const [messages, setMessages] = useState<RoomMessage[]>([]);
 
   useEffect(() => {
     fetch("/api/socket").finally(() => {
@@ -22,26 +24,34 @@ export default function Message() {
       });
 
       socket.on("connect", () => {
-        console.log("connect");
-        socket.emit("msg", { msg: "hello" });
+        const queryParameters = new URLSearchParams(window.location.search);
+        const name = queryParameters.get("name");
+        setLoading(false);
+        const joinRoomRequest: JoinRoomRequest = {
+          room: "Lobby",
+          username: name,
+        };
+        socket.emit("join_room", joinRoomRequest);
       });
 
-      socket.on("server_msg", (msg) => {
-        console.log(msg);
+      socket.on("join_room_response", (response: JoinRoomResponse) => {
+        if (response.result == "fail") {
+          console.log(response.message);
+        }
+        const roomMessage: RoomMessage = {
+          message: `${response.username} joined the room. (There are ${response.count} users in the room.)`,
+          id: nextId++,
+        };
+        setMessages((previous) => [roomMessage, ...previous]);
       });
     });
   }, []);
 
   return (
     <>
-      {/* <button
-        onClick={() => {
-          socket.emit("msg", "test");
-        }}
-      >
-        Test
-      </button> */}
-      {loading ? <>Loading...</> : <>{name}:</>}
+      {messages.map((message) => (
+        <p key={message.id}>{message.message}</p>
+      ))}
     </>
   );
 }

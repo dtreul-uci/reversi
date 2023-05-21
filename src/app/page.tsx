@@ -1,8 +1,8 @@
 import styles from "./page.module.css";
 import Link from "next/link";
 import Image from "next/image";
-import topSplash from "../../public/images/top-splash.png";
-import bottomSplash from "../../public/images/bottom-splash.png";
+import topSplash from "@/public/images/top-splash.png";
+import bottomSplash from "@/public/images/bottom-splash.png";
 
 export default function Page() {
   return (
