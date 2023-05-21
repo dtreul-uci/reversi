@@ -1,13 +1,17 @@
 "use client";
 
 import { io, Socket } from "socket.io-client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 let socket: Socket;
 
 export default function Message() {
-  const queryParameters = new URLSearchParams(window.location.search);
-  const name = queryParameters.get("name");
+  const [name, setName] = useState<null | string>("");
+
+  useEffect(() => {
+    const queryParameters = new URLSearchParams(window.location.search);
+    setName(queryParameters.get("name"));
+  }, []);
 
   useEffect(() => {
     fetch("/api/socket").finally(() => {
