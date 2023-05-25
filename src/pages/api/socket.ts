@@ -34,7 +34,17 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
     res.socket.server.io = io;
 
     io.on("connection", (socket: Socket) => {
-      console.log("Client connected");
+      function serverLog(...messages: string[]) {
+        io.emit("log", ["**** Message from the server:\n"]);
+        messages.forEach((message) => {
+          io.emit("log", ["****\t" + message]);
+          console.log(message);
+        });
+      }
+      serverLog("a page connected to the server: " + socket.id);
+      socket.on("disconnect", () => {
+        serverLog("a page disconnected from the server: " + socket.id);
+      });
 
       socket.on("join_room", (request: JoinRoomRequest) => {
         if (typeof request.room == undefined || request.room == null) {
@@ -65,13 +75,10 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
               count: sockets.length,
             };
             io.of("/").to(request.room).emit("join_room_response", response);
-            console.log(response);
           });
       });
 
       socket.on("send_chat_message", (request: SendChatMessageRequest) => {
-        console.log("sending chat message!!!!");
-        console.log(request);
         if (typeof request.room == undefined || request.room == null) {
           const response: SendChatMessageResponse = {
             result: "fail",
@@ -104,7 +111,6 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
         io.of("/")
           .to(request.room!)
           .emit("send_chat_message_response", response);
-        console.log(response);
       });
     });
   }

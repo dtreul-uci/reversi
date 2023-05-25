@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { JoinRoomRequest, JoinRoomResponse } from "@/src/types/join_room";
 import { SendChatMessageRequest } from "@/src/types/send_chat_message";
 import styles from "./page.module.css";
+import { useSearchParams } from "next/navigation";
 
 let socket: Socket;
 
@@ -21,52 +22,57 @@ export default function ChatRoom() {
   const [messages, setMessages] = useState<RoomMessage[]>([]);
   const [message, setMessage] = useState("");
   const [userName, setUserName] = useState<string | null>("");
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    fetch("/api/socket").finally(() => {
-      socket = io({
-        path: "/api/socket",
-      });
-
-      socket.on("connect", () => {
-        const queryParameters = new URLSearchParams(window.location.search);
-        const name = queryParameters.get("name");
-        setUserName(name);
-        const joinRoomRequest: JoinRoomRequest = {
-          room: chatRoomName,
-          username: name,
-        };
-        console.log(socket);
-        socket.emit("join_room", joinRoomRequest);
-      });
-
-      socket.on("join_room_response", (response: JoinRoomResponse) => {
-        console.log("received: ");
-        console.log(response);
-        if (response.result == "fail") {
-          console.log(response.message);
-        }
-        const roomMessage: RoomMessage = {
-          message: `${response.username} joined the room. (There are ${response.count} users in the room.)`,
-          id: nextId++,
-        };
-        setLoading(false);
-        setMessages((previous) => [roomMessage, ...previous]);
-      });
-
-      socket.on("send_chat_message_response", (response: JoinRoomResponse) => {
-        console.log("received: ");
-        console.log(response);
-        if (response.result == "fail") {
-          console.log(response.message);
-        }
-        const roomMessage: RoomMessage = {
-          message: `${response.username}: ${response.message}`,
-          id: nextId++,
-        };
-        setMessages((previous) => [roomMessage, ...previous]);
-      });
+    // fetch("/api/socket").finally(() => {
+    socket = io({
+      path: "/api/socket",
     });
+
+    socket.on("connect", () => {
+      const name = searchParams!.get("name");
+      setUserName(name);
+      const joinRoomRequest: JoinRoomRequest = {
+        room: chatRoomName,
+        username: name,
+      };
+      console.log(socket);
+      socket.emit("join_room", joinRoomRequest);
+    });
+
+    socket.on("join_room_response", (response: JoinRoomResponse) => {
+      console.log("received: ");
+      console.log(response);
+      if (response.result == "fail") {
+        console.log(response.message);
+      }
+      const roomMessage: RoomMessage = {
+        message: `${response.username} joined the room. (There are ${response.count} users in the room.)`,
+        id: nextId++,
+      };
+      setLoading(false);
+      setMessages((previous) => [roomMessage, ...previous]);
+    });
+
+    socket.on("send_chat_message_response", (response: JoinRoomResponse) => {
+      console.log("received: ");
+      console.log(response);
+      if (response.result == "fail") {
+        console.log(response.message);
+      }
+      const roomMessage: RoomMessage = {
+        message: `${response.username}: ${response.message}`,
+        id: nextId++,
+      };
+      setMessages((previous) => [roomMessage, ...previous]);
+    });
+    // });
+
+    window.onbeforeunload = (..._args) => {
+      alert("leaving");
+      socket.disconnect();
+    };
   }, []);
 
   const sendChatMessage: React.FormEventHandler<HTMLFormElement> = (e) => {
