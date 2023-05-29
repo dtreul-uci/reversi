@@ -50,8 +50,8 @@ export default function ChatRoom() {
           username: "",
         };
         setLoading(false);
+        setMessages((previous) => [roomMessage, ...previous]);
         if (response.socket_id !== socket.id) {
-          setMessages((previous) => [roomMessage, ...previous]);
           const player: Player = {
             username: response.username!,
             socket_id: response.socket_id,

@@ -5,6 +5,7 @@ import { SocketContextProvider } from "@/src/context/socket_context";
 import styles from "./page.module.css";
 import PlayerList from "./player_list";
 import { PlayersContextProvider } from "@/src/context/players_context";
+import { Suspense } from "react";
 
 export const metadata = {
   title: "Reversi: Lobby",
@@ -13,7 +14,7 @@ export const metadata = {
 
 export default function Page() {
   return (
-    <>
+    <Suspense fallback={null}>
       <GameContextProvider>
         <SocketContextProvider>
           <PlayersContextProvider>
@@ -44,6 +45,6 @@ export default function Page() {
           </PlayersContextProvider>
         </SocketContextProvider>
       </GameContextProvider>
-    </>
+    </Suspense>
   );
 }

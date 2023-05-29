@@ -85,18 +85,28 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
                 username: request.username!,
                 room: request.room,
               });
+              // Inform current socket about all existing members.
               sockets.forEach((member) => {
-                const response: JoinRoomResponse = {
-                  result: "success",
-                  socket_id: member.id,
-                  room: players.get(member.id)?.room,
-                  username: players.get(member.id)?.username,
-                  count: sockets.length,
-                };
-                io.of("/")
-                  .to(request.room)
-                  .emit("join_room_response", response);
+                if (member.id !== socket.id) {
+                  const response: JoinRoomResponse = {
+                    result: "success",
+                    socket_id: member.id,
+                    room: players.get(member.id)?.room,
+                    username: players.get(member.id)?.username,
+                    count: sockets.length,
+                  };
+                  socket.emit("join_room_response", response);
+                }
               });
+              // Inform rest of sockets in room, about the current joining socket.
+              const response: JoinRoomResponse = {
+                result: "success",
+                socket_id: socket.id,
+                room: players.get(socket.id)?.room,
+                username: players.get(socket.id)?.username,
+                count: sockets.length,
+              };
+              io.of("/").to(request.room).emit("join_room_response", response);
             }
           });
       });
