@@ -8,6 +8,7 @@ import { useGameContext } from "@/src/context/store";
 import { useSocketContext } from "@/src/context/socket_context";
 import ChatMessage from "./chat_message";
 import { PlayerDisconnectedeResponse } from "@/src/types/player_disconnected";
+import { Player, usePlayersContext } from "@/src/context/players_context";
 
 let socket: Socket;
 
@@ -24,6 +25,7 @@ export default function ChatRoom() {
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<ChatMessageResponse[]>([]);
   const [message, setMessage] = useState("");
+  const { players, setPlayers } = usePlayersContext();
   const { username, gameId } = useGameContext();
   const { socket } = useSocketContext();
 
@@ -48,7 +50,14 @@ export default function ChatRoom() {
           username: "",
         };
         setLoading(false);
-        setMessages((previous) => [roomMessage, ...previous]);
+        if (response.socket_id !== socket.id) {
+          setMessages((previous) => [roomMessage, ...previous]);
+          const player: Player = {
+            username: response.username!,
+            socket_id: response.socket_id,
+          };
+          setPlayers((previous) => [player, ...previous]);
+        }
       });
 
       socket.on("send_chat_message_response", (response: JoinRoomResponse) => {
@@ -76,7 +85,7 @@ export default function ChatRoom() {
       socket.on(
         "player_disconnected",
         (response: PlayerDisconnectedeResponse) => {
-          if (response) {
+          if (response && response.socket_id !== socket.id) {
             const roomMessage: ChatMessageResponse = {
               message: `${response.username} left the room. (There are ${response.count} users in the room.)`,
               id: nextId++,
@@ -84,6 +93,11 @@ export default function ChatRoom() {
               username: "",
             };
             setMessages((previous) => [roomMessage, ...previous]);
+            setPlayers((previous) =>
+              previous.filter(
+                (player) => player.socket_id !== response.socket_id
+              )
+            );
           }
         }
       );

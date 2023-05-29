@@ -1,10 +1,25 @@
-.chatMessage {
+.fadeIn {
   animation: fade 500ms;
 }
 
+.fadeOut {
+  animation: fadeout 500ms;
+}
+
+@keyframes fadeout {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.chatMessage {
+}
+
 .systemMessage {
-  background-color: rgb(222, 222, 222);
-  animation: fade 500ms;
+  background-color: rgb(168, 168, 168);
 }
 
 @keyframes fade {
@@ -14,4 +29,12 @@
   100% {
     opacity: 1;
   }
+}
+
+.headerRow {
+  background-color: rgb(247, 247, 247);
+}
+
+.chatMessageSection {
+  background-color: rgb(247, 247, 247);
 }

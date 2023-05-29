@@ -19,6 +19,7 @@ export const SocketContextProvider = ({ children }: Props) => {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   const initSocket = async () => {
+    console.log("connecting!");
     setSocket(
       io({
         path: "/api/socket",
@@ -30,6 +31,7 @@ export const SocketContextProvider = ({ children }: Props) => {
     initSocket();
 
     return () => {
+      console.log("in context");
       if (socket) {
         socket.disconnect();
       }

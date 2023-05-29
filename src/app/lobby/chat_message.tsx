@@ -8,10 +8,14 @@ interface ChatMessageProps {
 
 export default function ChatMessage(props: ChatMessageProps) {
   if (props.type == "system") {
-    return <p className={styles.systemMessage}>{props.message}</p>;
+    return (
+      <p className={`${styles.systemMessage} ${styles.fadeIn}`}>
+        {props.message}
+      </p>
+    );
   } else {
     return (
-      <p className={styles.chatMessage}>
+      <p className={`${styles.chatMessage} ${styles.fadeIn}`}>
         <b>{props.username}</b>
         <span>: {props.message}</span>
       </p>
