@@ -102,7 +102,7 @@ export default function ChatRoom() {
         }
       );
     }
-  }, [username, gameId, socket]);
+  }, [username, gameId, socket, setPlayers]);
 
   const sendChatMessage: React.FormEventHandler<HTMLFormElement> = (e) => {
     if (socket) {

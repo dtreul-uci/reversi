@@ -15,7 +15,7 @@ export default function ChatMessage(props: ChatMessageProps) {
     );
   } else {
     return (
-      <p className={`${styles.chatMessage} ${styles.fadeIn}`}>
+      <p className={`${styles.fadeIn}`}>
         <b>{props.username}</b>
         <span>: {props.message}</span>
       </p>
