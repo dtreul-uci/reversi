@@ -8,12 +8,16 @@ interface ContextProps {
   gameId: string;
 }
 
+type Props = {
+  children: React.ReactNode;
+};
+
 const GameContext = createContext<ContextProps>({
   username: "",
   gameId: "",
 });
 
-export const GameContextProvider = ({ children }) => {
+export const GameContextProvider = ({ children }: Props) => {
   const [username, setUsername] = useState("");
   const [gameId, setGameId] = useState("");
   const searchParams = useSearchParams();

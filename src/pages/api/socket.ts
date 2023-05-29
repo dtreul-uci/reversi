@@ -56,6 +56,7 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
           const response: JoinRoomResponse = {
             result: "fail",
             message: "Room not specified",
+            socket_id: socket.id,
           };
           socket.emit("join_room_response", response);
         }
@@ -63,6 +64,7 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
           const response: JoinRoomResponse = {
             result: "fail",
             message: "Username not specified",
+            socket_id: socket.id,
           };
           socket.emit("join_room_response", response);
         }
