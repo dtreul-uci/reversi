@@ -1,6 +1,6 @@
 import ChatRoom from "./chat_room";
 import LobbyHeader from "./lobby_header";
-import { GameContextProvider } from "@/src/context/store";
+import { GameContextProvider } from "@/src/context/game_context2";
 import { SocketContextProvider } from "@/src/context/socket_context";
 import styles from "./page.module.css";
 import PlayerList from "./player_list";

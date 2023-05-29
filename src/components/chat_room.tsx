@@ -4,7 +4,7 @@ import { io, Socket } from "socket.io-client";
 import { useEffect, useState } from "react";
 import { JoinRoomRequest, JoinRoomResponse } from "@/src/types/join_room";
 import { SendChatMessageRequest } from "@/src/types/send_chat_message";
-import { useGameContext } from "@/src/context/store";
+import { useGameContext } from "@/src/context/game_context";
 import { useSocketContext } from "@/src/context/socket_context";
 import ChatMessage from "./chat_message";
 import { PlayerDisconnectedeResponse } from "@/src/types/player_disconnected";

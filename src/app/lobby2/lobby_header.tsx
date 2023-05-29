@@ -1,6 +1,6 @@
 "use client";
 
-import { useGameContext } from "@/src/context/store";
+import { useGameContext } from "@/src/context/game_context2";
 
 export default function LobbyHeader() {
   const { username } = useGameContext();

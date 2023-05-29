@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
+import { useRouter } from "next/router";
 
 interface ContextProps {
   socket: Socket | null;
@@ -17,6 +18,8 @@ const SocketContext = createContext<ContextProps>({
 
 export const SocketContextProvider = ({ children }: Props) => {
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [socketLoaded, setSocketLoaded] = useState(false);
+  const router = useRouter();
 
   const initSocket = async () => {
     console.log("connecting!");
@@ -29,14 +32,21 @@ export const SocketContextProvider = ({ children }: Props) => {
 
   useEffect(() => {
     initSocket();
-
-    return () => {
-      console.log("in context");
-      if (socket) {
-        socket.disconnect();
-      }
-    };
+    setSocketLoaded(true);
   }, []);
+
+  useEffect(() => {
+    if (socket && router.isReady) {
+      console.log("added");
+      // socket?.disconnect();
+      window.addEventListener("beforeunload", () => {
+        socket!.disconnect();
+      });
+      router.events.on("routeChangeStart", () => {
+        socket!.disconnect();
+      });
+    }
+  }, [socket, router]);
 
   return (
     <SocketContext.Provider value={{ socket }}>
