@@ -4,86 +4,103 @@ import { io, Socket } from "socket.io-client";
 import { useEffect, useState } from "react";
 import { JoinRoomRequest, JoinRoomResponse } from "@/src/types/join_room";
 import { SendChatMessageRequest } from "@/src/types/send_chat_message";
-import styles from "./page.module.css";
-import { useSearchParams } from "next/navigation";
+import { useGameContext } from "@/src/context/store";
+import { useSocketContext } from "@/src/context/socket_context";
+import ChatMessage from "./chat_message";
+import { PlayerDisconnectedeResponse } from "@/src/types/player_disconnected";
 
 let socket: Socket;
 
-interface RoomMessage {
+interface ChatMessageResponse {
   message: string;
   id: number;
+  type: string;
+  username: string;
 }
 
 let nextId = 0;
-const chatRoomName = "Lobby";
 
 export default function ChatRoom() {
   const [loading, setLoading] = useState(true);
-  const [messages, setMessages] = useState<RoomMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessageResponse[]>([]);
   const [message, setMessage] = useState("");
-  const [userName, setUserName] = useState<string | null>("");
-  const searchParams = useSearchParams();
+  const { username, gameId } = useGameContext();
+  const { socket } = useSocketContext();
 
   useEffect(() => {
-    // fetch("/api/socket").finally(() => {
-    socket = io({
-      path: "/api/socket",
-    });
+    if (socket && username && gameId) {
+      socket.on("connect", () => {
+        const joinRoomRequest: JoinRoomRequest = {
+          room: gameId!,
+          username: username,
+        };
+        socket.emit("join_room", joinRoomRequest);
+      });
 
-    socket.on("connect", () => {
-      const name = searchParams!.get("name");
-      setUserName(name);
-      const joinRoomRequest: JoinRoomRequest = {
-        room: chatRoomName,
-        username: name,
-      };
-      console.log(socket);
-      socket.emit("join_room", joinRoomRequest);
-    });
+      socket.on("join_room_response", (response: JoinRoomResponse) => {
+        if (response.result == "fail") {
+          console.log(response.message);
+        }
+        const roomMessage: ChatMessageResponse = {
+          message: `${response.username} joined the room. (There are ${response.count} users in the room.)`,
+          id: nextId++,
+          type: "system",
+          username: "",
+        };
+        setLoading(false);
+        setMessages((previous) => [roomMessage, ...previous]);
+      });
 
-    socket.on("join_room_response", (response: JoinRoomResponse) => {
-      console.log("received: ");
-      console.log(response);
-      if (response.result == "fail") {
-        console.log(response.message);
-      }
-      const roomMessage: RoomMessage = {
-        message: `${response.username} joined the room. (There are ${response.count} users in the room.)`,
-        id: nextId++,
-      };
-      setLoading(false);
-      setMessages((previous) => [roomMessage, ...previous]);
-    });
+      socket.on("send_chat_message_response", (response: JoinRoomResponse) => {
+        if (response.result == "fail") {
+          console.log(response.message);
+          return;
+        }
+        if (!response.message) {
+          console.log("no message");
+          return;
+        }
+        if (!response.username) {
+          console.log("no username");
+          return;
+        }
+        const roomMessage: ChatMessageResponse = {
+          message: response.message,
+          id: nextId++,
+          type: "",
+          username: response.username,
+        };
+        setMessages((previous) => [roomMessage, ...previous]);
+      });
 
-    socket.on("send_chat_message_response", (response: JoinRoomResponse) => {
-      console.log("received: ");
-      console.log(response);
-      if (response.result == "fail") {
-        console.log(response.message);
-      }
-      const roomMessage: RoomMessage = {
-        message: `${response.username}: ${response.message}`,
-        id: nextId++,
-      };
-      setMessages((previous) => [roomMessage, ...previous]);
-    });
-    // });
-
-    window.onbeforeunload = (..._args) => {
-      alert("leaving");
-      socket.disconnect();
-    };
-  }, []);
+      socket.on(
+        "player_disconnected",
+        (response: PlayerDisconnectedeResponse) => {
+          if (response) {
+            const roomMessage: ChatMessageResponse = {
+              message: `${response.username} left the room. (There are ${response.count} users in the room.)`,
+              id: nextId++,
+              type: "system",
+              username: "",
+            };
+            setMessages((previous) => [roomMessage, ...previous]);
+          }
+        }
+      );
+    }
+  }, [username, gameId, socket]);
 
   const sendChatMessage: React.FormEventHandler<HTMLFormElement> = (e) => {
-    e.preventDefault();
-    const request: SendChatMessageRequest = {
-      room: chatRoomName,
-      username: userName,
-      message: message,
-    };
-    socket.emit("send_chat_message", request);
-    setMessage("");
+    if (socket) {
+      e.preventDefault();
+      const request: SendChatMessageRequest = {
+        room: gameId,
+        username: username,
+        message: message,
+      };
+      socket.emit("send_chat_message", request);
+      setMessage("");
+    }
   };
 
   return (
@@ -113,10 +130,13 @@ export default function ChatRoom() {
       </div>
       <h4>Messages</h4>
       {loading && <>Loading messages...</>}
-      {messages.map((message) => (
-        <p className={styles.chatMessage} key={message.id}>
-          {message.message}
-        </p>
+      {messages.map((messageResponse) => (
+        <ChatMessage
+          key={messageResponse.id}
+          message={messageResponse.message}
+          username={messageResponse.username}
+          type={messageResponse.type}
+        />
       ))}
     </>
   );

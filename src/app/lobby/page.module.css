@@ -1,3 +1,17 @@
 .chatMessage {
+  animation: fade 500ms;
+}
+
+.systemMessage {
   background-color: rgb(222, 222, 222);
+  animation: fade 500ms;
+}
+
+@keyframes fade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }

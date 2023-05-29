@@ -5,6 +5,7 @@ export interface JoinRoomRequest {
 
 export interface JoinRoomResponse {
   result: string;
+  socket_id: string;
   room?: string | null;
   username?: string | null;
   count?: number;
