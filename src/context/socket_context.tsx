@@ -7,11 +7,15 @@ interface ContextProps {
   socket: Socket | null;
 }
 
+type Props = {
+  children: React.ReactNode;
+};
+
 const SocketContext = createContext<ContextProps>({
   socket: null,
 });
 
-export const SocketContextProvider = ({ children }) => {
+export const SocketContextProvider = ({ children }: Props) => {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   const initSocket = async () => {
