@@ -85,6 +85,7 @@ export default function InviteButton(props: InviteButtonProps) {
 
     socket!.on("game_start_response", (response: GameStartResponse) => {
       if (response.result === "success") {
+        socket?.disconnect();
         router.push({
           pathname: "/game",
           query: {
