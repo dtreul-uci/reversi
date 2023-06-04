@@ -35,19 +35,6 @@ export const SocketContextProvider = ({ children }: Props) => {
     setSocketLoaded(true);
   }, []);
 
-  useEffect(() => {
-    if (socket && router.isReady) {
-      console.log("added");
-      // socket?.disconnect();
-      window.addEventListener("beforeunload", () => {
-        socket!.disconnect();
-      });
-      router.events.on("routeChangeStart", () => {
-        socket!.disconnect();
-      });
-    }
-  }, [socket, router]);
-
   return (
     <SocketContext.Provider value={{ socket }}>
       {children}

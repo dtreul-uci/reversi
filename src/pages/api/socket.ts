@@ -1,6 +1,6 @@
 import { Server } from "socket.io";
 import type { NextApiRequest, NextApiResponse } from "next";
-import type { Server as IOServer, Socket } from "socket.io";
+import { Server as IOServer, Socket } from "socket.io";
 import type { Server as HTTPServer } from "http";
 import type { Socket as NetSocket } from "net";
 
@@ -10,6 +10,14 @@ import {
   SendChatMessageResponse,
 } from "@/src/types/send_chat_message";
 import { PlayerDisconnectedeResponse } from "@/src/types/player_disconnected";
+import {
+  InviteRequest,
+  InviteResponse,
+  Invited,
+  UninviteRequest,
+  UninviteResponse,
+} from "@/src/types/invite";
+import { GameStartRequest, GameStartResponse } from "@/src/types/game_start";
 
 interface SocketServer extends HTTPServer {
   io?: IOServer | undefined;
@@ -87,7 +95,7 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
               });
               // Inform current socket about all existing members.
               sockets.forEach((member) => {
-                if (member.id !== socket.id) {
+                if (member.id === socket.id) {
                   const response: JoinRoomResponse = {
                     result: "success",
                     socket_id: member.id,
@@ -162,6 +170,159 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
         io.of("/")
           .to(request.room!)
           .emit("send_chat_message_response", response);
+      });
+
+      socket.on("invite", (request: InviteRequest) => {
+        console.log("Invite Request Received: " + request);
+
+        if (request.requested_user === null) {
+          const response: InviteResponse = {
+            result: "fail",
+            message: "No requested user",
+          };
+          socket.emit("invite_response", response);
+          return;
+        }
+
+        const room = players.get(socket.id)?.room;
+        const username = players.get(socket.id)?.username;
+
+        if (room === null) {
+          const response: InviteResponse = {
+            result: "fail",
+            message: "Requested user is not in a room",
+          };
+          socket.emit("invite_response", response);
+          return;
+        }
+
+        // Make sure requested player is present
+        if (!io.of("/").adapter.rooms.get(room!)?.has(request.requested_user)) {
+          const response: InviteResponse = {
+            result: "fail",
+            message: "Requested user is not in the room",
+          };
+          socket.emit("invite_response", response);
+          return;
+        }
+
+        // Requested player is in the room
+        const inviteResponse: InviteResponse = {
+          result: "success",
+          message: "success",
+          socket_id: request.requested_user,
+        };
+        socket.emit("invite_response", inviteResponse);
+
+        const invited: Invited = {
+          result: "success",
+          message: "success",
+          socket_id: socket.id,
+        };
+        socket.to(request.requested_user).emit("invited", invited);
+        return;
+      });
+
+      socket.on("uninvite", (request: UninviteRequest) => {
+        console.log("Uninvite Request Received: " + request);
+
+        if (request.requested_user === null) {
+          const response: UninviteResponse = {
+            result: "fail",
+            message: "No requested user",
+          };
+          socket.emit("invite_response", response);
+          return;
+        }
+
+        const room = players.get(socket.id)?.room;
+
+        if (room === null) {
+          const response: UninviteResponse = {
+            result: "fail",
+            message: "Requested user is not in a room",
+          };
+          socket.emit("invite_response", response);
+          return;
+        }
+
+        // Make sure requested player is present
+        if (!io.of("/").adapter.rooms.get(room!)?.has(request.requested_user)) {
+          const response: UninviteResponse = {
+            result: "fail",
+            message: "Requested user is not in the room",
+          };
+          socket.emit("invite_response", response);
+          return;
+        }
+
+        // Requested player is in the room
+        const uninviteResponse1: UninviteResponse = {
+          result: "success",
+          message: "success",
+          socket_id: request.requested_user,
+        };
+        socket.emit("uninvite_response", uninviteResponse1);
+
+        const uninviteResponse2: UninviteResponse = {
+          result: "success",
+          message: "success",
+          socket_id: socket.id,
+        };
+        socket
+          .to(request.requested_user)
+          .emit("uninvite_response", uninviteResponse2);
+
+        return;
+      });
+
+      socket.on("game_start", (request: GameStartRequest) => {
+        console.log("GameStart Request Received: " + request);
+
+        if (request.requested_user === null) {
+          const response: GameStartResponse = {
+            result: "fail",
+            message: "No requested user",
+          };
+          socket.emit("game_start_response", response);
+          return;
+        }
+
+        const room = players.get(socket.id)?.room;
+
+        if (room === null) {
+          const response: GameStartResponse = {
+            result: "fail",
+            message: "Requested user is not in a room",
+          };
+          socket.emit("game_start_response", response);
+          return;
+        }
+
+        // Make sure requested player is present
+        if (!io.of("/").adapter.rooms.get(room!)?.has(request.requested_user)) {
+          const response: GameStartResponse = {
+            result: "fail",
+            message: "Requested user is not in the room",
+          };
+          socket.emit("game_start_response", response);
+          return;
+        }
+
+        // Requested player is in the room
+        const game_id = Math.floor(1 + Math.random() * 0x100000).toString(16);
+        const gameStartResponse: GameStartResponse = {
+          result: "success",
+          message: "success",
+          game_id: game_id,
+        };
+        socket.emit("game_start_response", gameStartResponse);
+
+        socket
+          .to(request.requested_user)
+          .emit("game_start_response", gameStartResponse);
+
+        return;
       });
     });
   }

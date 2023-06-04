@@ -25,7 +25,7 @@ export default function ChatRoom() {
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<ChatMessageResponse[]>([]);
   const [message, setMessage] = useState("");
-  const { players, setPlayers } = usePlayersContext();
+  const { setPlayers } = usePlayersContext();
   const { username, gameId } = useGameContext();
   const { socket } = useSocketContext();
 
