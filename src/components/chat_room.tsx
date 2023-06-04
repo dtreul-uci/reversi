@@ -56,7 +56,7 @@ export default function ChatRoom() {
             username: response.username!,
             socket_id: response.socket_id,
           };
-          setPlayers((previous) => [player, ...previous]);
+          setPlayers((previous) => [...previous, player]);
         }
       });
 
