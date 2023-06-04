@@ -95,7 +95,7 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
               });
               // Inform current socket about all existing members.
               sockets.forEach((member) => {
-                if (member.id === socket.id) {
+                if (member.id !== socket.id) {
                   const response: JoinRoomResponse = {
                     result: "success",
                     socket_id: member.id,
