@@ -38,7 +38,7 @@ export default function Page() {
                 type="text"
                 className="form-control text-nowrap"
                 id="nameInput"
-                name="name"
+                name="username"
                 required={true}
                 placeholder="Choose your display name"
                 aria-label="Enter your display name for use while playing Reversi"

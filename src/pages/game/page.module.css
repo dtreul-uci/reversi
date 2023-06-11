@@ -1,0 +1,65 @@
+.fadeIn {
+  animation: fade 500ms;
+}
+
+.fadeInThousand {
+  animation: fade 1000ms;
+}
+
+.fadeOut {
+  animation: fadeout 500ms;
+}
+
+@keyframes fadeout {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.systemMessage {
+  background-color: rgb(168, 168, 168);
+}
+
+@keyframes fade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.body {
+  background-color: rgb(247, 247, 247);
+  height: 100%;
+  width: 100%;
+  position: absolute;
+}
+
+.chatMessageSection {
+  background-color: rgb(247, 247, 247);
+}
+
+.headerBackground {
+  background-color: rgb(208, 208, 208);
+}
+
+.board {
+  border: 4px solid black;
+  margin: 0px;
+  padding: 0px;
+}
+
+.gamePiece {
+  /* border: 1px solid black; */
+  position: relative;
+  margin: 0px;
+  padding: 0px;
+}
+
+.abs {
+  position: absolute;
+}

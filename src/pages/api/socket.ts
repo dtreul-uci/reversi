@@ -18,6 +18,10 @@ import {
   UninviteResponse,
 } from "@/src/types/invite";
 import { GameStartRequest, GameStartResponse } from "@/src/types/game_start";
+import { GameUpdateResponse } from "@/src/types/game_update";
+import { Game } from "@/src/types/game";
+import { PlayTokenRequest, PlayTokenResponse } from "@/src/types/play_token";
+import { GameOver } from "@/src/types/game_over";
 
 interface SocketServer extends HTTPServer {
   io?: IOServer | undefined;
@@ -115,6 +119,11 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
                 count: sockets.length,
               };
               io.of("/").to(request.room).emit("join_room_response", response);
+
+              // Game
+              if (request.room !== "Lobby") {
+                send_game_update(io, socket, request.room, "initial update");
+              }
             }
           });
       });
@@ -324,9 +333,222 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
 
         return;
       });
+
+      socket.on("play_token", (request: PlayTokenRequest) => {
+        if (!request) {
+          const response: PlayTokenResponse = {
+            result: "fail",
+            message: "No request",
+          };
+          return;
+        }
+
+        const player = players.get(socket.id);
+        if (!player) {
+          const response: PlayTokenResponse = {
+            result: "fail",
+            message: "Play token came from unregistered player",
+          };
+          return;
+        }
+
+        const username = player.username;
+        if (!username) {
+          const response: PlayTokenResponse = {
+            result: "fail",
+            message: "Play token came from an unregistered username",
+          };
+          return;
+        }
+
+        const game_id = player.room;
+        if (!game_id) {
+          const response: PlayTokenResponse = {
+            result: "fail",
+            message: "Play token found no room",
+          };
+          return;
+        }
+
+        const game = games.get(game_id);
+        if (!game) {
+          const response: PlayTokenResponse = {
+            result: "fail",
+            message: "Play token found no game from game id",
+          };
+          return;
+        }
+
+        const response: PlayTokenResponse = {
+          result: "success",
+        };
+        socket.emit("play_token_response", response);
+
+        // Execute the move
+        if (request.color === "white") {
+          game.board[request.row][request.column] = "w";
+          game.whose_turn = "black";
+        } else if (request.color === "black") {
+          game.board[request.row][request.column] = "b";
+          game.whose_turn = "white";
+        }
+
+        send_game_update(io, socket, game_id, "played a token");
+      });
     });
   }
   res.end();
 };
+
+// *************
+// Game State Functions
+
+let games: Map<string, Game> = new Map();
+
+function create_new_game() {
+  const date = new Date();
+  const board = [
+    [" ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", "w", "b", " ", " ", " "],
+    [" ", " ", " ", "b", "w", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " "],
+  ];
+  const game: Game = {
+    player_white: {
+      socket: "",
+      username: "",
+    },
+    player_black: {
+      socket: "",
+      username: "",
+    },
+    last_move_time: date,
+    board: board,
+    whose_turn: "white",
+  };
+  return game;
+}
+
+function send_game_update(
+  io: Server,
+  socket: Socket,
+  game_id: string,
+  message: string
+) {
+  // Check if game with game_id exists, create if doesn't exist.
+  if (!games.has(game_id)) {
+    console.log(
+      `no game exists with game_id ${game_id}. Making a new game for ${socket.id}`
+    );
+    games.set(game_id, create_new_game());
+  }
+
+  // Make sure only 2 people are in the room
+  io.of("/")
+    .to(game_id)
+    .allSockets()
+    .then((sockets) => {
+      const iterator = sockets[Symbol.iterator]();
+
+      if (sockets.size >= 1) {
+        const first = iterator.next().value;
+        if (
+          games.get(game_id)?.player_white.socket != first &&
+          games.get(game_id)?.player_black.socket != first
+        ) {
+          // Player does not have a color.
+          if (games.get(game_id)?.player_white.socket === "") {
+            // Player should be white
+            console.log(`White is assigned to: ${first}`);
+            games.get(game_id)!.player_white.socket = first;
+            games.get(game_id)!.player_white.username =
+              players.get(first)!.username;
+          } else if (games.get(game_id)?.player_black.socket === "") {
+            // Player should be black
+            console.log(`Black is assigned to: ${first}`);
+            games.get(game_id)!.player_black.socket = first;
+            games.get(game_id)!.player_black.username =
+              players.get(first)!.username;
+          } else {
+            // This is a 3rd player
+            console.log(`Kicking ${first} out of game ${game_id}`);
+            io.in(first).socketsLeave([game_id]);
+          }
+        }
+      }
+
+      if (sockets.size >= 2) {
+        const second = iterator.next().value;
+        if (
+          games.get(game_id)?.player_white.socket != second &&
+          games.get(game_id)?.player_black.socket != second
+        ) {
+          // Player does not have a color.
+          if (games.get(game_id)?.player_white.socket === "") {
+            // Player should be white
+            console.log(`White is assigned to (Second): ${second}`);
+            games.get(game_id)!.player_white.socket = second;
+            games.get(game_id)!.player_white.username =
+              players.get(second)!.username;
+          } else if (games.get(game_id)?.player_black.socket === "") {
+            // Player should be black
+            console.log(`Black is assigned to (Second): ${second}`);
+            games.get(game_id)!.player_black.socket = second;
+            games.get(game_id)!.player_black.username =
+              players.get(second)!.username;
+          } else {
+            // This is a 3rd player
+            console.log(`Kicking ${second} out of game ${game_id}`);
+            io.in(second).socketsLeave([game_id]);
+          }
+        }
+      }
+
+      // Send game update
+      let payload: GameUpdateResponse = {
+        result: "success",
+        game_id: game_id,
+        game: games.get(game_id),
+        message: message,
+      };
+      console.log(games.get(game_id));
+      io.of("/").to(game_id).emit("game_update", payload);
+    });
+
+  // Check if game is over
+  let count = 0;
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      if (games.get(game_id)!.board[row][col] !== " ") {
+        count++;
+      }
+    }
+  }
+  if (count == 64) {
+    console.log("GAME OVER!!!");
+    console.log(games.get(game_id)!.board);
+    let payload: GameOver = {
+      result: "success",
+      game_id: game_id,
+      game: games.get(game_id)!,
+      who_won: "everyone",
+    };
+    io.in(game_id).emit("game_over", payload);
+
+    // Delete old games after one hour
+    setTimeout(
+      ((id) => {
+        return () => {
+          games.delete(id);
+        };
+      })(game_id),
+      60 * 60 * 1000
+    );
+  }
+}
 
 export default SocketHandler;

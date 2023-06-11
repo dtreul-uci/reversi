@@ -1,6 +1,6 @@
 "use client";
 
-import { io, Socket } from "socket.io-client";
+import { Socket } from "socket.io-client";
 import { useEffect, useState } from "react";
 import { JoinRoomRequest, JoinRoomResponse } from "@/src/types/join_room";
 import { SendChatMessageRequest } from "@/src/types/send_chat_message";

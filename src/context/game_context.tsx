@@ -22,8 +22,8 @@ export const GameContextProvider = ({ children }: Props) => {
 
   useEffect(() => {
     if (router.isReady) {
-      if (router.query.name && typeof router.query.name == "string") {
-        setUsername(router.query.name);
+      if (router.query.username && typeof router.query.username == "string") {
+        setUsername(router.query.username);
       } else {
         setUsername("Anonymous " + Math.floor(Math.random() * 1000).toString());
       }
