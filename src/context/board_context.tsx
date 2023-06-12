@@ -20,6 +20,12 @@ interface ContextProps {
   setWinner: Dispatch<SetStateAction<string>>;
   whitesum: number;
   blacksum: number;
+  whoseTurn: string;
+  setWhoseTurn: Dispatch<SetStateAction<string>>;
+  validMoves: string[][];
+  setValidMoves: Dispatch<SetStateAction<string[][]>>;
+  lastMoveTime: number;
+  setLastMoveTime: Dispatch<SetStateAction<number>>;
 }
 
 type Props = {
@@ -37,6 +43,12 @@ const BoardContext = createContext<ContextProps>({
   setWinner: (): string => "",
   whitesum: 0,
   blacksum: 0,
+  whoseTurn: "",
+  setWhoseTurn: (): string => "",
+  validMoves: [],
+  setValidMoves: (): string[] => [],
+  lastMoveTime: 0,
+  setLastMoveTime: (): number => 0,
 });
 
 export const BoardContextProvider = ({ children }: Props) => {
@@ -44,6 +56,9 @@ export const BoardContextProvider = ({ children }: Props) => {
   const [myColor, setMyColor] = useState("");
   const [isOver, setIsOver] = useState(false);
   const [winner, setWinner] = useState("");
+  const [whoseTurn, setWhoseTurn] = useState("");
+  const [validMoves, setValidMoves] = useState<string[][]>([]);
+  const [lastMoveTime, setLastMoveTime] = useState<number>(0);
 
   let whitesum = 0;
   let blacksum = 0;
@@ -86,6 +101,12 @@ export const BoardContextProvider = ({ children }: Props) => {
         setWinner,
         whitesum,
         blacksum,
+        whoseTurn,
+        setWhoseTurn,
+        validMoves,
+        setValidMoves,
+        lastMoveTime,
+        setLastMoveTime,
       }}
     >
       {children}

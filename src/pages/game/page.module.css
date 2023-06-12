@@ -63,3 +63,7 @@
 .abs {
   position: absolute;
 }
+
+.progress {
+  max-width: 488px;
+}

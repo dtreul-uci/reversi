@@ -9,6 +9,7 @@ import GameOver from "./game_over";
 import Status from "./status";
 import { BoardContextProvider } from "@/src/context/board_context";
 import Board from "./board";
+import ProgressBar from "./progress_bar";
 
 export const metadata = {
   title: "Reversi",
@@ -29,6 +30,7 @@ export default function Page() {
                 <div className="row m-3">
                   <div className="row align-items-start justify-content-center">
                     <div className="col-md-8">
+                      <ProgressBar />
                       <Board />
                     </div>
                     <div className={`${styles.headerBackground} col-md-4`}>

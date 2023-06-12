@@ -33,11 +33,16 @@ const usePreviousValue = (value: string) => {
 
 export default function GamePiece(props: GamePieceProps) {
   const prevStatus = usePreviousValue(props.status);
-  const { myColor } = useBoardContext();
+  const { myColor, whoseTurn, validMoves } = useBoardContext();
   const curStatus = props.status;
   const { socket } = useSocketContext();
 
   const [isHovered, setIsHovered] = useState(false);
+
+  const isValid =
+    myColor === whoseTurn &&
+    validMoves.length == 8 &&
+    validMoves[props.row][props.col] === myColor[0];
 
   function sendMove() {
     if (socket && props.status === " ") {
@@ -55,7 +60,10 @@ export default function GamePiece(props: GamePieceProps) {
   let imageData: StaticImageData;
   let altText: string;
 
-  if (prevStatus === "?" && curStatus === " ") {
+  if (curStatus == "?") {
+    imageData = emptyToken;
+    altText = "Empty";
+  } else if (prevStatus === "?" && curStatus === " ") {
     imageData = emptyToken;
     altText = "Empty";
   } else if (prevStatus === "?" && curStatus == "w") {
@@ -98,9 +106,13 @@ export default function GamePiece(props: GamePieceProps) {
 
   return (
     <div
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        if (isValid) setIsHovered(true);
+      }}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={sendMove}
+      onClick={() => {
+        if (isValid) sendMove();
+      }}
     >
       {isHovered && props.status === " " ? (
         <Image

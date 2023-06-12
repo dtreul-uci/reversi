@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useGameContext } from "@/src/context/game_context";
 
 export default function Status() {
-  const { myColor, whitesum, blacksum } = useBoardContext();
+  const { myColor, whitesum, blacksum, whoseTurn } = useBoardContext();
   const { username } = useGameContext();
 
   let imageData: StaticImageData | undefined = undefined;
@@ -25,7 +25,8 @@ export default function Status() {
   return (
     <div className={`row m-3`}>
       <div className="col-md-8 text-center justify-content-center">
-        <h3>{`I am ${myColor}`}</h3>
+        {myColor && <h3>{`I am ${myColor}`}</h3>}
+        {whoseTurn && <h4>{`It's ${whoseTurn}'s turn`}</h4>}
         <br />
         <Image src={whiteToken} alt="White Score" className="img-fluid m-1" />
         <span className="m-1">{whitesum}</span>

@@ -8,8 +8,17 @@ import { PlayTokenResponse } from "@/src/types/play_token";
 import { GameOver } from "@/src/types/game_over";
 
 export default function Board() {
-  const { board, setBoard, myColor, setMyColor, setIsOver, setWinner } =
-    useBoardContext();
+  const {
+    board,
+    setBoard,
+    myColor,
+    setMyColor,
+    setIsOver,
+    setWinner,
+    setWhoseTurn,
+    setValidMoves,
+    setLastMoveTime,
+  } = useBoardContext();
   const { socket } = useSocketContext();
 
   useEffect(() => {
@@ -32,11 +41,14 @@ export default function Board() {
           setMyColor("black");
         } else {
           // Shouldn't ever get here... Abort!
-          // Todo: redirect to lobby
         }
 
         // Update Board
         setBoard(payload.game.board);
+        setWhoseTurn(payload.game.whose_turn);
+        setValidMoves(payload.game.legal_moves);
+        setLastMoveTime(payload.game.last_move_time);
+        console.log(payload.game);
       });
       socket.on("play_token_response", (payload: PlayTokenResponse) => {
         if (!payload) {
@@ -62,7 +74,15 @@ export default function Board() {
         setWinner(payload.who_won);
       });
     }
-  }, [socket, setBoard, setMyColor, setIsOver, setWinner]);
+  }, [
+    socket,
+    setBoard,
+    setMyColor,
+    setIsOver,
+    setWinner,
+    setWhoseTurn,
+    setValidMoves,
+  ]);
 
   return (
     <table className={`${styles.board} mx-auto w-auto`}>

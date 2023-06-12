@@ -379,6 +379,15 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
           return;
         }
 
+        // Make sure the attempt is by the correct color
+        if (request.color !== game.whose_turn) {
+          const response: PlayTokenResponse = {
+            result: "fail",
+            message: "Not the players turn",
+          };
+          return;
+        }
+
         const response: PlayTokenResponse = {
           result: "success",
         };
@@ -387,11 +396,18 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
         // Execute the move
         if (request.color === "white") {
           game.board[request.row][request.column] = "w";
+          flip_tokens("w", request.row, request.column, game.board);
           game.whose_turn = "black";
+          game.legal_moves = calculate_legal_moves("b", game.board);
         } else if (request.color === "black") {
           game.board[request.row][request.column] = "b";
+          flip_tokens("b", request.row, request.column, game.board);
           game.whose_turn = "white";
+          game.legal_moves = calculate_legal_moves("w", game.board);
         }
+
+        const d = new Date();
+        game.last_move_time = d.getTime();
 
         send_game_update(io, socket, game_id, "played a token");
       });
@@ -406,7 +422,6 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
 let games: Map<string, Game> = new Map();
 
 function create_new_game() {
-  const date = new Date();
   const board = [
     [" ", " ", " ", " ", " ", " ", " ", " "],
     [" ", " ", " ", " ", " ", " ", " ", " "],
@@ -417,6 +432,8 @@ function create_new_game() {
     [" ", " ", " ", " ", " ", " ", " ", " "],
     [" ", " ", " ", " ", " ", " ", " ", " "],
   ];
+  const legal_moves = calculate_legal_moves("b", board);
+  const d = new Date();
   const game: Game = {
     player_white: {
       socket: "",
@@ -426,11 +443,155 @@ function create_new_game() {
       socket: "",
       username: "",
     },
-    last_move_time: date,
+    last_move_time: d.getTime(),
     board: board,
-    whose_turn: "white",
+    whose_turn: "black",
+    legal_moves: legal_moves,
   };
   return game;
+}
+
+function check_line_match(
+  color: string,
+  dr: number,
+  dc: number,
+  r: number,
+  c: number,
+  board: string[][]
+): boolean {
+  if (board[r][c] === color) {
+    return true;
+  }
+
+  // Check to make sure we aren't going to walk off the board
+  if (r + dr < 0 || r + dr > 7) {
+    return false;
+  }
+  if (c + dc < 0 || c + dc > 7) {
+    return false;
+  }
+  return check_line_match(color, dr, dc, r + dr, c + dc, board);
+}
+
+function adjacent_support(
+  who: string,
+  dr: number,
+  dc: number,
+  r: number,
+  c: number,
+  board: string[][]
+): boolean {
+  let other: string;
+  if (who === "b") {
+    other = "w";
+  } else {
+    other = "b";
+  }
+
+  // Make sure it is on the board
+  if (r + dr < 0 || r + dr > 7) {
+    return false;
+  }
+  if (c + dc < 0 || c + dc > 7) {
+    return false;
+  }
+
+  // Check opposite color is present
+  if (board[r + dr][c + dc] !== other) {
+    return false;
+  }
+
+  // Make sure there is space for matching color to capture tokens
+  if (r + dr + dr < 0 || r + dr + dr > 7) {
+    return false;
+  }
+  if (c + dc + dc < 0 || c + dc + dc > 7) {
+    return false;
+  }
+
+  return check_line_match(who, dr, dc, r + dr + dr, c + dc + dc, board);
+}
+
+function calculate_legal_moves(who: string, board: string[][]): string[][] {
+  let legal_moves = [
+    [" ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " "],
+    [" ", " ", " ", " ", " ", " ", " ", " "],
+  ];
+
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      if (board[row][col] !== " ") {
+        continue;
+      }
+      let nw = adjacent_support(who, -1, -1, row, col, board);
+      let nn = adjacent_support(who, -1, 0, row, col, board);
+      let ne = adjacent_support(who, -1, 1, row, col, board);
+
+      let ww = adjacent_support(who, 0, -1, row, col, board);
+      let ee = adjacent_support(who, 0, 1, row, col, board);
+
+      let sw = adjacent_support(who, 1, -1, row, col, board);
+      let ss = adjacent_support(who, 1, 0, row, col, board);
+      let se = adjacent_support(who, 1, 1, row, col, board);
+
+      if (nw || nn || ne || ww || ee || sw || ss || se) {
+        legal_moves[row][col] = who;
+      }
+    }
+  }
+
+  return legal_moves;
+}
+
+function flip_line(
+  who: string,
+  dr: number,
+  dc: number,
+  r: number,
+  c: number,
+  board: string[][]
+) {
+  // Make sure it is on the board
+  if (r + dr < 0 || r + dr > 7) {
+    return false;
+  }
+  if (c + dc < 0 || c + dc > 7) {
+    return false;
+  }
+
+  if (board[r + dr][c + dc] === " ") {
+    return false;
+  }
+
+  if (board[r + dr][c + dc] === who) {
+    return true;
+  } else {
+    if (flip_line(who, dr, dc, r + dr, c + dc, board)) {
+      board[r + dr][c + dc] = who;
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+
+function flip_tokens(who: string, row: number, col: number, board: string[][]) {
+  flip_line(who, -1, -1, row, col, board);
+  flip_line(who, -1, 0, row, col, board);
+  flip_line(who, -1, 1, row, col, board);
+
+  flip_line(who, 0, -1, row, col, board);
+  flip_line(who, 0, 1, row, col, board);
+
+  flip_line(who, 1, -1, row, col, board);
+  flip_line(who, 1, 0, row, col, board);
+  flip_line(who, 1, 1, row, col, board);
 }
 
 function send_game_update(
@@ -515,27 +676,41 @@ function send_game_update(
         game: games.get(game_id),
         message: message,
       };
-      console.log(games.get(game_id));
       io.of("/").to(game_id).emit("game_update", payload);
     });
 
   // Check if game is over
-  let count = 0;
+  let legal_moves = 0;
+  let whitesum = 0;
+  let blacksum = 0;
+
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
-      if (games.get(game_id)!.board[row][col] !== " ") {
-        count++;
+      if (games.get(game_id)!.legal_moves[row][col] !== " ") {
+        legal_moves++;
+      }
+      if (games.get(game_id)!.board[row][col] === "w") {
+        whitesum++;
+      }
+      if (games.get(game_id)!.board[row][col] === "b") {
+        blacksum++;
       }
     }
   }
-  if (count == 64) {
+  if (legal_moves === 0) {
+    let winner = "Tie Game";
+    if (whitesum > blacksum) {
+      winner = "white";
+    } else {
+      winner = "black";
+    }
+
     console.log("GAME OVER!!!");
-    console.log(games.get(game_id)!.board);
     let payload: GameOver = {
       result: "success",
       game_id: game_id,
       game: games.get(game_id)!,
-      who_won: "everyone",
+      who_won: winner,
     };
     io.in(game_id).emit("game_over", payload);
 
