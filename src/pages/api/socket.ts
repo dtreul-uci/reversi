@@ -804,6 +804,7 @@ function send_game_update(
             }
           );
         }
+        checkGameOver(io, socket, game_id, is_practice);
       });
     }
   } else {
@@ -888,6 +889,15 @@ function send_game_update(
   }
 
   // Check if game is over
+  checkGameOver(io, socket, game_id, is_practice);
+}
+
+function checkGameOver(
+  io: Server,
+  socket: Socket,
+  game_id: string,
+  is_practice: boolean
+) {
   let legal_moves = 0;
   let whitesum = 0;
   let blacksum = 0;
