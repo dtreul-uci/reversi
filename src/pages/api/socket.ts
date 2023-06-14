@@ -770,15 +770,16 @@ function send_game_update(
       message: message,
     };
     socket.emit("game_update", payload);
+    const isOver = checkGameOver(io, socket, game_id, is_practice);
 
     // If computers turn, make another game update with them making a move.
     if (
-      (games.get(game_id)!.player_white.socket === "" &&
+      (!isOver &&
+        games.get(game_id)!.player_white.socket === "" &&
         games.get(game_id)!.whose_turn === "white") ||
       (games.get(game_id)!.player_black.socket === "" &&
         games.get(game_id)!.whose_turn === "black")
     ) {
-      checkGameOver(io, socket, game_id, is_practice);
       sendRandomMoveFromComputer(games.get(game_id)!).then(() => {
         socket.emit("game_update", payload);
         if (Math.random() < 0.1) {
@@ -804,6 +805,7 @@ function send_game_update(
             }
           );
         }
+
         checkGameOver(io, socket, game_id, is_practice);
       });
     }
@@ -886,10 +888,8 @@ function send_game_update(
         };
         io.of("/").to(game_id).emit("game_update", payload);
       });
+    checkGameOver(io, socket, game_id, is_practice);
   }
-
-  // Check if game is over
-  checkGameOver(io, socket, game_id, is_practice);
 }
 
 function checkGameOver(
@@ -897,7 +897,7 @@ function checkGameOver(
   socket: Socket,
   game_id: string,
   is_practice: boolean
-) {
+): boolean {
   let legal_moves = 0;
   let whitesum = 0;
   let blacksum = 0;
@@ -983,6 +983,9 @@ function checkGameOver(
       })(game_id),
       60 * 60 * 1000
     );
+    return true;
+  } else {
+    return false;
   }
 }
 
