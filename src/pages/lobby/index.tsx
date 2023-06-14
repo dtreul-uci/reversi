@@ -7,6 +7,7 @@ import PlayerList from "@/src/components/player_list";
 import { PlayersContextProvider } from "@/src/context/players_context";
 import { Suspense } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
+import PracticeButton from "./practice_button";
 
 export const metadata = {
   title: "Reversi: Lobby",
@@ -29,6 +30,11 @@ export default function Page() {
                 <div className="row m-3">
                   <div className="row align-items-start justify-content-center">
                     <div className="col-md-4">
+                      <div
+                        className={`${styles.practiceButtonContainer} text-center my-4`}
+                      >
+                        <PracticeButton />
+                      </div>
                       <h4>Players</h4>
                       <PlayerList />
                       <div

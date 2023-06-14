@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSocketContext } from "@/src/context/socket_context";
 import { PlayTokenRequest } from "@/src/types/play_token";
 import { useBoardContext } from "@/src/context/board_context";
+import { useGameContext } from "@/src/context/game_context";
 
 interface GamePieceProps {
   status: string;

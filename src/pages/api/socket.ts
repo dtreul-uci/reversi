@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { Server as IOServer, Socket } from "socket.io";
 import type { Server as HTTPServer } from "http";
 import type { Socket as NetSocket } from "net";
-
 import { JoinRoomRequest, JoinRoomResponse } from "@/src/types/join_room";
 import {
   SendChatMessageRequest,
@@ -22,6 +21,18 @@ import { GameUpdateResponse } from "@/src/types/game_update";
 import { Game } from "@/src/types/game";
 import { PlayTokenRequest, PlayTokenResponse } from "@/src/types/play_token";
 import { GameOver } from "@/src/types/game_over";
+
+import {
+  ChatCompletionRequestMessage,
+  ChatCompletionRequestMessageRoleEnum,
+  Configuration,
+  OpenAIApi,
+} from "openai";
+
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+const openai = new OpenAIApi(configuration);
 
 interface SocketServer extends HTTPServer {
   io?: IOServer | undefined;
@@ -82,10 +93,16 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
         }
 
         // success
-        socket.join(request.room);
+        let roomName: string;
+        if (request.room === "Practice") {
+          roomName = "Practice:" + socket.id;
+        } else {
+          roomName = request.room;
+        }
+        socket.join(roomName);
 
         // Check client is in room
-        io.in(request.room)
+        io.in(roomName)
           .fetchSockets()
           .then((sockets) => {
             // Fail
@@ -95,7 +112,7 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
             else {
               players.set(socket.id, {
                 username: request.username!,
-                room: request.room,
+                room: roomName,
               });
               // Inform current socket about all existing members.
               sockets.forEach((member) => {
@@ -118,11 +135,27 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
                 username: players.get(socket.id)?.username,
                 count: sockets.length,
               };
-              io.of("/").to(request.room).emit("join_room_response", response);
+              io.of("/").to(roomName).emit("join_room_response", response);
 
               // Game
-              if (request.room !== "Lobby") {
-                send_game_update(io, socket, request.room, "initial update");
+              if (request.room === "Practice") {
+                send_game_update(
+                  io,
+                  socket,
+                  roomName,
+                  "initial update",
+                  true,
+                  true
+                );
+              } else if (request.room !== "Lobby") {
+                send_game_update(
+                  io,
+                  socket,
+                  roomName,
+                  "initial update",
+                  false,
+                  false
+                );
               }
             }
           });
@@ -170,15 +203,48 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
         }
 
         // success
-        const response: SendChatMessageResponse = {
-          result: "success",
-          room: request.room,
-          username: request.username,
-          message: request.message!,
-        };
-        io.of("/")
-          .to(request.room!)
-          .emit("send_chat_message_response", response);
+        if (request.room === "Practice") {
+          const game = games.get("Practice:" + socket.id)!;
+
+          // Return user message
+          const payload1: SendChatMessageResponse = {
+            result: "success",
+            room: request.room,
+            username: request.username,
+            message: request.message!,
+          };
+          socket.emit("send_chat_message_response", payload1);
+          game.chat_messages.push({
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: request.message!,
+          });
+
+          // return chat gpt message
+          generateChatMessageGPT(game.chat_messages).then((response) => {
+            const payload: SendChatMessageResponse = {
+              result: "success",
+              room: "Practice:" + socket.id,
+              username: "Reversi Bot",
+              message: response,
+            };
+            socket.emit("send_chat_message_response", payload);
+            game.chat_messages.push({
+              role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              content: response,
+            });
+          });
+        } else {
+          const response: SendChatMessageResponse = {
+            result: "success",
+            room: request.room,
+            username: request.username,
+            message: request.message!,
+          };
+          io.of("/")
+            .to(request.room!)
+            .emit("send_chat_message_response", response);
+        }
+        console.log(request.room);
       });
 
       socket.on("invite", (request: InviteRequest) => {
@@ -409,7 +475,13 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
         const d = new Date();
         game.last_move_time = d.getTime();
 
-        send_game_update(io, socket, game_id, "played a token");
+        // Check if practice game.
+        if (game_id.substring(0, "Practice".length) === "Practice") {
+          console.log("Practice play!");
+          send_game_update(io, socket, game_id, "played a token", true, false);
+        } else {
+          send_game_update(io, socket, game_id, "played a token", false, false);
+        }
       });
     });
   }
@@ -447,6 +519,7 @@ function create_new_game() {
     board: board,
     whose_turn: "black",
     legal_moves: legal_moves,
+    chat_messages: [],
   };
   return game;
 }
@@ -461,6 +534,10 @@ function check_line_match(
 ): boolean {
   if (board[r][c] === color) {
     return true;
+  }
+
+  if (board[r][c] === " ") {
+    return false;
   }
 
   // Check to make sure we aren't going to walk off the board
@@ -594,90 +671,221 @@ function flip_tokens(who: string, row: number, col: number, board: string[][]) {
   flip_line(who, 1, 1, row, col, board);
 }
 
+async function sendRandomMoveFromComputer(game: Game) {
+  // Find out whether the computer is black or white
+  let computer: string;
+  if (game.player_black.socket === "") {
+    computer = "b";
+  } else {
+    computer = "w";
+  }
+  const legalMovesCoordinates: number[][] = [];
+  game.legal_moves.forEach((row, rowIndex) => {
+    row.forEach((col, colIndex) => {
+      if (game.legal_moves[rowIndex][colIndex] === computer) {
+        legalMovesCoordinates.push([rowIndex, colIndex]);
+      }
+    });
+  });
+
+  if (legalMovesCoordinates.length === 0) {
+    // Game over, return;
+    return;
+  }
+  // Find the coordinates to flip
+  const coords =
+    legalMovesCoordinates[
+      Math.floor(Math.random() * legalMovesCoordinates.length)
+    ];
+  const x = coords[0];
+  const y = coords[1];
+
+  // Execute the move
+  function sleep(ms: number) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  }
+  await sleep(1000);
+  game.board[x][y] = computer;
+  flip_tokens(computer, x, y, game.board);
+  game.whose_turn = computer === "w" ? "black" : "white";
+  game.legal_moves = calculate_legal_moves(
+    computer === "w" ? "b" : "w",
+    game.board
+  );
+}
+
 function send_game_update(
   io: Server,
   socket: Socket,
   game_id: string,
-  message: string
+  message: string,
+  is_practice: boolean,
+  is_initial_practice_call: boolean
 ) {
-  // Check if game with game_id exists, create if doesn't exist.
-  if (!games.has(game_id)) {
-    console.log(
-      `no game exists with game_id ${game_id}. Making a new game for ${socket.id}`
-    );
-    games.set(game_id, create_new_game());
+  if (is_practice) {
+    if (is_initial_practice_call) {
+      games.set(game_id, create_new_game());
+      const game = games.get(game_id)!;
+      // Decide whether player is white or black via random
+      if (Math.random() > 0.5) {
+        console.log("assigning player as white");
+        game.player_white.socket = socket.id;
+        game.player_white.username = players.get(socket.id)!.username;
+      } else {
+        console.log("assigning player as black");
+        game.player_black.socket = socket.id;
+        game.player_black.username = players.get(socket.id)!.username;
+      }
+      // Set up GPT
+      game.chat_messages.push({
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content:
+          "You are a playful assistant playing a game of Reversi with the user.",
+      });
+      game.chat_messages.push({
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content:
+          "The game is starting and you want to encourage the other player",
+      });
+      generateChatMessageGPT(game.chat_messages).then((response) => {
+        const payload: SendChatMessageResponse = {
+          result: "success",
+          room: game_id,
+          username: "Reversi Bot",
+          message: response,
+        };
+        socket.emit("send_chat_message_response", payload);
+        game.chat_messages.push({
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: response,
+        });
+      });
+    }
+    // Send game update
+    let payload: GameUpdateResponse = {
+      result: "success",
+      game_id: game_id,
+      game: games.get(game_id),
+      message: message,
+    };
+    socket.emit("game_update", payload);
+
+    // If computers turn, make another game update with them making a move.
+    if (
+      (games.get(game_id)!.player_white.socket === "" &&
+        games.get(game_id)!.whose_turn === "white") ||
+      (games.get(game_id)!.player_black.socket === "" &&
+        games.get(game_id)!.whose_turn === "black")
+    ) {
+      sendRandomMoveFromComputer(games.get(game_id)!).then(() => {
+        socket.emit("game_update", payload);
+        if (Math.random() < 0.1) {
+          console.log("send a chat message!");
+          games.get(game_id)!.chat_messages.push({
+            role: ChatCompletionRequestMessageRoleEnum.System,
+            content: "You just played a good move in Reversi.",
+          });
+          generateChatMessageGPT(games.get(game_id)!.chat_messages).then(
+            (response) => {
+              console.log("gpt generated");
+              const payload: SendChatMessageResponse = {
+                result: "success",
+                room: game_id,
+                username: "Reversi Bot",
+                message: response,
+              };
+              socket.emit("send_chat_message_response", payload);
+              games.get(game_id)!.chat_messages.push({
+                role: ChatCompletionRequestMessageRoleEnum.Assistant,
+                content: response,
+              });
+            }
+          );
+        }
+      });
+    }
+  } else {
+    // Check if game with game_id exists, create if doesn't exist.
+    if (!games.has(game_id)) {
+      console.log(
+        `no game exists with game_id ${game_id}. Making a new game for ${socket.id}`
+      );
+      games.set(game_id, create_new_game());
+    }
+
+    // Make sure only 2 people are in the room
+    io.of("/")
+      .to(game_id)
+      .allSockets()
+      .then((sockets) => {
+        const iterator = sockets[Symbol.iterator]();
+
+        if (sockets.size >= 1) {
+          const first = iterator.next().value;
+          if (
+            games.get(game_id)?.player_white.socket != first &&
+            games.get(game_id)?.player_black.socket != first
+          ) {
+            // Player does not have a color.
+            if (games.get(game_id)?.player_white.socket === "") {
+              // Player should be white
+              console.log(`White is assigned to: ${first}`);
+              games.get(game_id)!.player_white.socket = first;
+              games.get(game_id)!.player_white.username =
+                players.get(first)!.username;
+            } else if (games.get(game_id)?.player_black.socket === "") {
+              // Player should be black
+              console.log(`Black is assigned to: ${first}`);
+              games.get(game_id)!.player_black.socket = first;
+              games.get(game_id)!.player_black.username =
+                players.get(first)!.username;
+            } else {
+              // This is a 3rd player
+              console.log(`Kicking ${first} out of game ${game_id}`);
+              io.in(first).socketsLeave([game_id]);
+            }
+          }
+        }
+
+        if (sockets.size >= 2) {
+          const second = iterator.next().value;
+          if (
+            games.get(game_id)?.player_white.socket != second &&
+            games.get(game_id)?.player_black.socket != second
+          ) {
+            // Player does not have a color.
+            if (games.get(game_id)?.player_white.socket === "") {
+              // Player should be white
+              console.log(`White is assigned to (Second): ${second}`);
+              games.get(game_id)!.player_white.socket = second;
+              games.get(game_id)!.player_white.username =
+                players.get(second)!.username;
+            } else if (games.get(game_id)?.player_black.socket === "") {
+              // Player should be black
+              console.log(`Black is assigned to (Second): ${second}`);
+              games.get(game_id)!.player_black.socket = second;
+              games.get(game_id)!.player_black.username =
+                players.get(second)!.username;
+            } else {
+              // This is a 3rd player
+              console.log(`Kicking ${second} out of game ${game_id}`);
+              io.in(second).socketsLeave([game_id]);
+            }
+          }
+        }
+
+        // Send game update
+        let payload: GameUpdateResponse = {
+          result: "success",
+          game_id: game_id,
+          game: games.get(game_id),
+          message: message,
+        };
+        io.of("/").to(game_id).emit("game_update", payload);
+      });
   }
-
-  // Make sure only 2 people are in the room
-  io.of("/")
-    .to(game_id)
-    .allSockets()
-    .then((sockets) => {
-      const iterator = sockets[Symbol.iterator]();
-
-      if (sockets.size >= 1) {
-        const first = iterator.next().value;
-        if (
-          games.get(game_id)?.player_white.socket != first &&
-          games.get(game_id)?.player_black.socket != first
-        ) {
-          // Player does not have a color.
-          if (games.get(game_id)?.player_white.socket === "") {
-            // Player should be white
-            console.log(`White is assigned to: ${first}`);
-            games.get(game_id)!.player_white.socket = first;
-            games.get(game_id)!.player_white.username =
-              players.get(first)!.username;
-          } else if (games.get(game_id)?.player_black.socket === "") {
-            // Player should be black
-            console.log(`Black is assigned to: ${first}`);
-            games.get(game_id)!.player_black.socket = first;
-            games.get(game_id)!.player_black.username =
-              players.get(first)!.username;
-          } else {
-            // This is a 3rd player
-            console.log(`Kicking ${first} out of game ${game_id}`);
-            io.in(first).socketsLeave([game_id]);
-          }
-        }
-      }
-
-      if (sockets.size >= 2) {
-        const second = iterator.next().value;
-        if (
-          games.get(game_id)?.player_white.socket != second &&
-          games.get(game_id)?.player_black.socket != second
-        ) {
-          // Player does not have a color.
-          if (games.get(game_id)?.player_white.socket === "") {
-            // Player should be white
-            console.log(`White is assigned to (Second): ${second}`);
-            games.get(game_id)!.player_white.socket = second;
-            games.get(game_id)!.player_white.username =
-              players.get(second)!.username;
-          } else if (games.get(game_id)?.player_black.socket === "") {
-            // Player should be black
-            console.log(`Black is assigned to (Second): ${second}`);
-            games.get(game_id)!.player_black.socket = second;
-            games.get(game_id)!.player_black.username =
-              players.get(second)!.username;
-          } else {
-            // This is a 3rd player
-            console.log(`Kicking ${second} out of game ${game_id}`);
-            io.in(second).socketsLeave([game_id]);
-          }
-        }
-      }
-
-      // Send game update
-      let payload: GameUpdateResponse = {
-        result: "success",
-        game_id: game_id,
-        game: games.get(game_id),
-        message: message,
-      };
-      io.of("/").to(game_id).emit("game_update", payload);
-    });
 
   // Check if game is over
   let legal_moves = 0;
@@ -708,11 +916,52 @@ function send_game_update(
     console.log("GAME OVER!!!");
     let payload: GameOver = {
       result: "success",
-      game_id: game_id,
+      game_id: is_practice ? "Practice:" + socket.id : game_id,
       game: games.get(game_id)!,
       who_won: winner,
     };
     io.in(game_id).emit("game_over", payload);
+
+    if (is_practice) {
+      // Send a game over message
+      let chatmessage: string;
+      if (
+        winner === "white" &&
+        games.get(game_id)!.player_white.socket === ""
+      ) {
+        // The bot won
+        chatmessage =
+          "You just beat the other player in Reversi. Send them words of encouragement to do better next time";
+      } else if (winner === "black") {
+        // The bot lost
+        chatmessage =
+          "You just lost to the other player in Reversi. Congradulate them.";
+      } else {
+        // Tie
+        chatmessage =
+          "You just tied in a game of Reversi. Complement them for playing a close game";
+      }
+      games.get(game_id)!.chat_messages.push({
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: chatmessage,
+      });
+      generateChatMessageGPT(games.get(game_id)!.chat_messages).then(
+        (response) => {
+          console.log("gpt generated");
+          const payload: SendChatMessageResponse = {
+            result: "success",
+            room: game_id,
+            username: "Reversi Bot",
+            message: response,
+          };
+          socket.emit("send_chat_message_response", payload);
+          games.get(game_id)!.chat_messages.push({
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            content: response,
+          });
+        }
+      );
+    }
 
     // Delete old games after one hour
     setTimeout(
@@ -724,6 +973,26 @@ function send_game_update(
       60 * 60 * 1000
     );
   }
+}
+
+async function generateChatMessageGPT(
+  messages: ChatCompletionRequestMessage[]
+): Promise<string> {
+  if (!configuration.apiKey) {
+    console.log("OpenAI API key not configured");
+    return "";
+  }
+
+  try {
+    const completion = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: messages,
+      temperature: 0.6,
+    });
+
+    return completion.data.choices[0].message?.content || "";
+  } catch (error) {}
+  return "";
 }
 
 export default SocketHandler;

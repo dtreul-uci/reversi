@@ -35,3 +35,12 @@
 .chatMessageSection {
   background-color: rgb(247, 247, 247);
 }
+
+.practiceButtonContainer {
+  background-color: rgb(247, 247, 247);
+}
+
+.practiceButton {
+  color: white;
+  background-color: purple;
+}
