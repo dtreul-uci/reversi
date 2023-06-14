@@ -1,3 +1,5 @@
+import { ChatCompletionRequestMessage } from "openai";
+
 export interface Game {
   player_white: GamePlayer;
   player_black: GamePlayer;
@@ -5,6 +7,7 @@ export interface Game {
   whose_turn: string;
   board: string[][];
   legal_moves: string[][];
+  chat_messages: ChatCompletionRequestMessage[];
 }
 
 export interface GamePlayer {
