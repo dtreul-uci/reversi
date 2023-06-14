@@ -67,3 +67,7 @@
 .progress {
   max-width: 488px;
 }
+
+.colorMe {
+  background-color: rgb(247, 247, 247);
+}

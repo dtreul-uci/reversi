@@ -477,7 +477,6 @@ const SocketHandler = (_: NextApiRequest, res: NextApiResponseWithSocket) => {
 
         // Check if practice game.
         if (game_id.substring(0, "Practice".length) === "Practice") {
-          console.log("Practice play!");
           send_game_update(io, socket, game_id, "played a token", true, false);
         } else {
           send_game_update(io, socket, game_id, "played a token", false, false);
@@ -779,13 +778,14 @@ function send_game_update(
       (games.get(game_id)!.player_black.socket === "" &&
         games.get(game_id)!.whose_turn === "black")
     ) {
+      checkGameOver(io, socket, game_id, is_practice);
       sendRandomMoveFromComputer(games.get(game_id)!).then(() => {
         socket.emit("game_update", payload);
         if (Math.random() < 0.1) {
           console.log("send a chat message!");
           games.get(game_id)!.chat_messages.push({
             role: ChatCompletionRequestMessageRoleEnum.System,
-            content: "You just played a good move in Reversi.",
+            content: "Tell the user that they played a great move in Reversi",
           });
           generateChatMessageGPT(games.get(game_id)!.chat_messages).then(
             (response) => {

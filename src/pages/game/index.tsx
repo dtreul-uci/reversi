@@ -26,7 +26,7 @@ export default function Page() {
               <Header />
               <GameOver />
               <Status />
-              <div className="row m-3">
+              <div className={`${styles.colorMe} row m-3`}>
                 <div className="row m-3">
                   <div className="row align-items-start justify-content-center">
                     <div className="col-md-8">
