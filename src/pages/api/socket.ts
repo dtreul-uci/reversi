@@ -936,20 +936,21 @@ function checkGameOver(
       // Send a game over message
       let chatmessage: string;
       if (
-        winner === "white" &&
-        games.get(game_id)!.player_white.socket === ""
+        (winner === "white" &&
+          games.get(game_id)!.player_white.socket === "") ||
+        (winner === "black" && games.get(game_id)!.player_black.socket === "")
       ) {
         // The bot won
         chatmessage =
           "You just beat the other player in Reversi. Send them words of encouragement to do better next time";
-      } else if (winner === "black") {
-        // The bot lost
-        chatmessage =
-          "You just lost to the other player in Reversi. Congradulate them.";
-      } else {
+      } else if (winner === "tie") {
         // Tie
         chatmessage =
           "You just tied in a game of Reversi. Complement them for playing a close game";
+      } else {
+        // The bot lost
+        chatmessage =
+          "You just lost to the other player in Reversi. Congradulate them.";
       }
       games.get(game_id)!.chat_messages.push({
         role: ChatCompletionRequestMessageRoleEnum.System,
