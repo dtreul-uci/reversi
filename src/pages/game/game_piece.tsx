@@ -38,8 +38,6 @@ export default function GamePiece(props: GamePieceProps) {
   const curStatus = props.status;
   const { socket } = useSocketContext();
 
-  const [isHovered, setIsHovered] = useState(false);
-
   const isValid =
     myColor === whoseTurn &&
     validMoves.length == 8 &&
@@ -107,15 +105,11 @@ export default function GamePiece(props: GamePieceProps) {
 
   return (
     <div
-      onMouseEnter={() => {
-        if (isValid) setIsHovered(true);
-      }}
-      onMouseLeave={() => setIsHovered(false)}
       onClick={() => {
         if (isValid) sendMove();
       }}
     >
-      {isHovered && props.status === " " ? (
+      {isValid && props.status === " " ? (
         <Image
           className={`img-fluid ${styles.abs}`}
           src={hover}

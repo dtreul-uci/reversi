@@ -62,6 +62,10 @@
 
 .abs {
   position: absolute;
+  opacity: 0;
+}
+.abs:hover {
+  opacity: 1;
 }
 
 .progress {

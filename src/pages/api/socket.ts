@@ -973,6 +973,7 @@ function checkGameOver(
         }
       );
     }
+    console.log("out of there!");
 
     // Delete old games after one hour
     setTimeout(
@@ -983,6 +984,7 @@ function checkGameOver(
       })(game_id),
       60 * 60 * 1000
     );
+    console.log("returning true!");
     return true;
   } else {
     return false;
